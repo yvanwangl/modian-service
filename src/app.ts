@@ -28,7 +28,7 @@ app.keys = ['recatch secret key'];
 //config session
 const CONFIG = {
     key: 'recatch:sess',
-    maxAge: 86400000
+    maxAge: 43200000
 };
 app.use(koaSession(CONFIG, app));
 
