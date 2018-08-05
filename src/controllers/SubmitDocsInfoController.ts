@@ -1,4 +1,4 @@
-import { Path, GET, POST, PUT, BodyParam, CtxParam, PathParam } from 'iwinter';
+import { Path, GET, POST, BodyParam, CtxParam, PathParam } from 'iwinter';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rimraf from 'rimraf';
@@ -56,20 +56,21 @@ class SubmitDocsInfoController {
         //设置创建人 和 创建时间
         Object.assign(docsNameInfo, {
             createInstance: new Date()
-        }); 
+        });
         let newDocsNameOrType;
-        if(docsNameInfo.addType === 'docsType'){
+        if (docsNameInfo.addType === 'docsType') {
             newDocsNameOrType = new DocsType(docsNameInfo);
-        }else {
+        } else {
             newDocsNameOrType = new DocsName(docsNameInfo);
         }
         let result = await newDocsNameOrType.save();
-        
+
         return buildResponse(null, result);
     }
 
     /**
      * 保存文档信息
+     * 文件件路径为： 文档名称id(docsNameId)/文档类型id(docsTypeId)/文档版本名称(version)
      */
     @POST
     @Path('/addDocsInfo')
@@ -91,7 +92,7 @@ class SubmitDocsInfoController {
 
         try {
             fs.readdirSync(docsTypeDir);
-        }catch {
+        } catch {
             fs.mkdirSync(docsTypeDir);
         }
 
@@ -104,20 +105,20 @@ class SubmitDocsInfoController {
         //生成访问路径
         let docsLinkPath = `http://${host}:${port}/${docsInfo.docsNameId}/${docsInfo.docsTypeId}/${docsInfo.docsVersion}/`;
         let docsLink = docsLinkPath;
-        if(codsRealExt === '.zip'){
+        if (codsRealExt === '.zip') {
             fs.createReadStream(uploadFile)
-            .pipe(unzip.Extract({ path: docsVersionDir }))
-            .on('close', function () {
-                copydir.sync(docsRealDir, docsVersionDir);
-                //将上传的zip 文件删除，将解压包删除                
-                rimraf(docsRealDir, ()=> {});
-            });
-            docsLink = `${docsLinkPath}index.html`;            
-        }else{
+                .pipe(unzip.Extract({ path: docsVersionDir }))
+                .on('close', function () {
+                    copydir.sync(docsRealDir, docsVersionDir);
+                    //将上传的zip 文件删除，将解压包删除                
+                    rimraf(docsRealDir, () => { });
+                });
+            docsLink = `${docsLinkPath}index.html`;
+        } else {
             fs.copyFileSync(uploadFile, `${docsVersionDir}/${docsInfo.filename}`);
             docsLink = `${docsLinkPath}${docsInfo.filename}`
         }
-        fs.unlink(uploadFile, () => {}); 
+        fs.unlink(uploadFile, () => { });
 
 
         //查找是否已经有该文档
@@ -144,14 +145,14 @@ class SubmitDocsInfoController {
             return buildResponse(null, result);
         }
         let targetDocsInfo = docsInfoList[0];
-        let targetDocsTypes = targetDocsInfo.docsTypes.filter(docsType=> docsType.docsTypeId === docsInfo.docsTypeId);
+        let targetDocsTypes = targetDocsInfo.docsTypes.filter(docsType => docsType.docsTypeId === docsInfo.docsTypeId);
         // 如果 '交互' 的文档类型存在，则 直接修改 versions
-        if(targetDocsTypes.length === 1){
+        if (targetDocsTypes.length === 1) {
             let preVersions = targetDocsTypes[0].versions;
-            if(preVersions.length === 5) {
+            if (preVersions.length === 10) {
                 let lastVersion = preVersions.pop();
-                //删除过期的版本，版本只保留最近 5 个
-                rimraf(path.resolve(docsTypeDir, lastVersion.version), ()=>{});
+                //删除过期的版本，版本只保留最近 10 个
+                rimraf(path.resolve(docsTypeDir, lastVersion.version), () => { });
             }
             targetDocsTypes[0].versions = [
                 {
@@ -160,7 +161,7 @@ class SubmitDocsInfoController {
                     link: docsLink,
                     createInstance: new Date()
                 },
-                ...preVersions     
+                ...preVersions
             ];
         } else {
             // 如果 ‘交互’ 的文档类型不存在，则增加
@@ -182,10 +183,34 @@ class SubmitDocsInfoController {
                 docsTypes: targetDocsInfo.docsTypes
             }
         }, { new: true });
-       
+
         return buildResponse(null, otherresult);
     }
 
+    /**
+     * 删除文档信息
+     */
+    @POST
+    @Path('/delDocsInfo')
+    async delDocsInfo(@CtxParam('ctx') ctx: any, @BodyParam('PathParam') docIdObj: any) {
+        const { docId, docsTypeId, docsVersionId } = docIdObj;
+        let docsInfoList = await DocsInfo.find({ _id: docId });
+        let targetDocsInfo = docsInfoList[0];
+        let targetDocsTypes = targetDocsInfo.docsTypes.filter(docsType => docsType.docsTypeId === docsTypeId);
+        let targetDocsType = targetDocsTypes[0];
+        let targetDocsVersions = targetDocsType.versions.filter(docsVersion => docsVersion.id === docsVersionId);
+        targetDocsType.versions = targetDocsType.versions.filter(docsVersion => docsVersion.id !== docsVersionId);
+        let otherresult = await DocsInfo.findByIdAndUpdate(docId, {
+            $set: {
+                docsTypes: targetDocsInfo.docsTypes
+            }
+        }, { new: true });
+        // 同步删除文件夹
+        const fileDir = path.resolve(pathToPublicFiles, '../', targetDocsInfo.docsNameId, docsTypeId, targetDocsVersions[0].version);
+        rimraf(fileDir, () => { });
+
+        return buildResponse(null, otherresult);
+    }
 
 
     /**
