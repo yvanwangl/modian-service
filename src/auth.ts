@@ -1,3 +1,17 @@
-export const userLoginAuth = (ctx, next)=> ctx.session.userInfo;
+export const userLoginAuth = (ctx, next) => {
+  try {
+    return ctx.session.userInfo;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+};
 
-export const userAdminLoginAuth = (ctx, next) => ctx.session.userInfo.admin;
+export const userAdminLoginAuth = (ctx, next) => {
+  try {
+    return ctx.session.userInfo.admin;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+};

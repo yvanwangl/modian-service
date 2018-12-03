@@ -11,7 +11,7 @@ class LogoutController {
     @Path('/')
     @POST
     logout( @CtxParam('ctx') ctx: any) {
-        let { username } = ctx.session.userInfo;
+        let { username } = ctx.session.userInfo || { username: 'nobody'};
         ctx.session.userInfo = null;
         return buildResponse(null, { username });
     }
