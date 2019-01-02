@@ -9,5 +9,7 @@ export default function connectMongoose() {
     mongoose.Promise = global.Promise;
     mongoose.connect(`mongodb://${authInfo}${host}:${port}/${database}`, {
         useMongoClient: true
+    }).catch(err => {
+      console.log(err.message);
     });
 }
