@@ -8,7 +8,9 @@ const authInfo = user && pwd ? `${user}:${pwd}@` : '';
 export default function connectMongoose() {
     mongoose.Promise = global.Promise;
     mongoose.connect(`mongodb://${authInfo}${host}:${port}/${database}`, {
-        useMongoClient: true
+        useMongoClient: true,
+        auto_reconnect: true,
+        poolSize: 10,
     }).catch(err => {
       console.log(err.message);
     });
